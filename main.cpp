@@ -109,19 +109,17 @@ void handle_mouse_button_event(SDL_Event* event)
     if (event->button.button == 1 && event->button.state == SDL_PRESSED) {
 #if 1
         // check if any vertex is overlapping
-        SDL_Point cur_mouse_pos;
-        SDL_GetMouseState(&cur_mouse_pos.x, &cur_mouse_pos.y);
-        int vertex_i = check_if_overlap_with_any_vertex(&cur_mouse_pos);
+        int vertex_i = get_hovering_node();
 
         if (vertex_i != -1) {
             // select the overlapping vertex
             source_i = vertex_i;
-            dest->x = cur_mouse_pos.x;
-            dest->y = cur_mouse_pos.y;
         }
 
         else {
             // if not create new vertex
+            SDL_Point cur_mouse_pos;
+            SDL_GetMouseState(&cur_mouse_pos.x, &cur_mouse_pos.y);
             create_vertex(&cur_mouse_pos);
         }
 #endif
@@ -139,11 +137,12 @@ void handle_mouse_button_event(SDL_Event* event)
         // source = NULL;
 
         if (source_i != -1) {
-            int dest_i = check_if_overlap_with_any_vertex(dest);
+            int dest_i = get_hovering_node();
 
             if (dest_i != -1 && source_i != dest_i) {
                 // create edge
-                graph.at(source_i)->push_back(dest_i);
+                vector<int>* vertex = graph.at(source_i);
+                (*vertex)[dest_i] = 1;
             }
 
             source_i = -1;
@@ -153,8 +152,7 @@ void handle_mouse_button_event(SDL_Event* event)
     }
 
     if (event->button.button == 3){
-        SDL_Point point = {event->button.x, event->button.y};
-        int i = check_if_overlap_with_any_vertex(&point);
+        int i = get_hovering_node();
 
         if (i != -1) {
             selected_vextex_i = i;
@@ -181,8 +179,15 @@ void handle_keyboard_event(SDL_Event* event)
     
     if (event->key.keysym.sym == SDLK_d) {
         if (selected_vextex_i != -1) {
-            graph.erase(graph.begin() + selected_vextex_i);
-            vertex_v.erase(vertex_v.begin() + selected_vextex_i);
+            graph[selected_vextex_i] = NULL;
+            vertex_v[selected_vextex_i] = NULL;
+
+            for (vector<int>* vertex : graph) {
+                if (vertex == NULL) continue;
+                (*vertex)[selected_vextex_i] = -1;
+            }
+
+            selected_vextex_i = -1;
         }
     }
     // if (event->key.keysym.sym == SDLK_t) execute_tsp();
@@ -203,6 +208,7 @@ void draw_vertex_all()
     for (int i=0; i<vertex_v.size(); i++) {
 
         SDL_Point* vertex = vertex_v.at(i);
+        if (vertex == NULL) continue;
 
         if (i == source_i) SDL_SetRenderDrawColor(renderer, 255, 100, 255, 255);
         else if (i == selected_vextex_i) SDL_SetRenderDrawColor(renderer, 100, 100, 255, 255);
@@ -215,9 +221,11 @@ void draw_vertex_all()
 void draw_edge_all() {
     for (int i=0; i<graph.size(); i++) {
         vector<int>* v = graph.at(i);
+        if (v == NULL) continue;
 
         for (int j=0; j<v->size(); j++) {
-            draw_edge_between(vertex_v.at(i), vertex_v.at(v->at(j)));
+            if (v->at(j) == -1) continue;
+            draw_edge_between(vertex_v.at(i), vertex_v.at(j));
         }
     }
 }
@@ -230,8 +238,12 @@ void draw_edge_between(SDL_Point* vertex1, SDL_Point* vertex2) {
 void draw_edge_being_created() {
     if (source_i != -1) {
         SDL_Point* source = vertex_v.at(source_i);
+        
+        SDL_Point cur_mouse_pos;
+        SDL_GetMouseState(&cur_mouse_pos.x, &cur_mouse_pos.y);
+
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderDrawLine(renderer, source->x, source->y, dest->x, dest->y);
+        SDL_RenderDrawLine(renderer, source->x, source->y, cur_mouse_pos.x, cur_mouse_pos.y);
     }
 }
 
@@ -277,17 +289,17 @@ void draw_edge_being_created() {
 //     }
 // }
 
-int check_if_overlap_with_any_vertex(SDL_Point* point)
-{
-    for (int i=0; i<vertex_v.size(); i++) {
-        SDL_Point* vertex = vertex_v.at(i);
-        if (distance(point, vertex) < (2 * CIRCLE_RADIUS)) return i;
-    }
+// int check_if_overlap_with_any_vertex(SDL_Point* point)
+// {
+//     for (int i=0; i<vertex_v.size(); i++) {
+//         SDL_Point* vertex = vertex_v.at(i);
+//         if (distance(point, vertex) < (2 * CIRCLE_RADIUS)) return i;
+//     }
 
-    return -1;
-}
+//     return -1;
+// }
 
-void create_vertex(NODE* new_node)
+void create_vertex(SDL_Point* v_pos)
 {
     // graph.push_back(new_node);
 
@@ -301,17 +313,21 @@ void create_vertex(NODE* new_node)
     //     row->push_back(distance(new_node, graph.at(i)));
     // }
 
-    graph.push_back(new vector<int>());
-    vertex_v.push_back(new SDL_Point{new_node->x, new_node->y});
+    graph.push_back(new vector<int>(100, -1));
+    vertex_v.push_back(new SDL_Point{v_pos->x, v_pos->y});
 }
 
 int get_hovering_node()
 {
-    SDL_Point mouse_pos;
-    SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
+    SDL_Point cur_mouse_pos;
+    SDL_GetMouseState(&cur_mouse_pos.x, &cur_mouse_pos.y);
 
-    for (int i=0; i<graph.size(); i++)
-    if (distance(&mouse_pos, vertex_v.at(i)) < (2 * CIRCLE_RADIUS)) return i;
+    for (int i=0; i<graph.size(); i++) {
+        SDL_Point* vertex = vertex_v.at(i);
+
+        if (vertex == NULL) continue;
+        if (distance(&cur_mouse_pos, vertex) < (2 * CIRCLE_RADIUS)) return i;
+    }
 
     return -1;
 }

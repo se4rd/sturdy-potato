@@ -1,6 +1,6 @@
 CC = g++
 
-# CFLAGS = -Wall
+CFLAGS = -g
 
 LDFLAGS = -lSDL2 -lSDL2_ttf
 
@@ -12,10 +12,10 @@ all: $(TARGET)
 
 $(TARGET): $(SRCS)
 	clear
-	$(CC) $(SRCS) $(LDFLAGS) -o $(TARGET)
+	$(CC) $(SRCS) $(CFLAGS) $(LDFLAGS) -o $(TARGET)
 
 clean:
 	rm -f $(TARGET)
 
 run: $(TARGET)
-	./$(TARGET)
+	gf2 $(TARGET)

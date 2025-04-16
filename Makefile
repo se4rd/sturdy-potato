@@ -1,10 +1,10 @@
 CC = g++
 
-CFLAGS = -g
+CFLAGS = -Iinclude -g
 
 LDFLAGS = -lSDL2 -lSDL2_ttf
 
-SRCS = main.cpp
+SRCS = src/*
 
 TARGET = main
 
@@ -18,4 +18,7 @@ clean:
 	rm -f $(TARGET)
 
 run: $(TARGET)
+	./$(TARGET)
+
+gf2: $(TARGET)
 	gf2 $(TARGET)
